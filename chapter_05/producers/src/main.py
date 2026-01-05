@@ -1,13 +1,9 @@
-# FastAPI app exposing 3 APIs & producing events to Kafka
-
-from typing import List
+from typing import List, Optional
 
 from fastapi import FastAPI, HTTPException
-from confluent_kafka import Producer
 
 from .config import settings
 from .models import Customer, Product, Order
-from .kafka_producer import create_kafka_producer, send_event
 from .data_generators import (
     sample_customers,
     sample_products,
@@ -16,16 +12,14 @@ from .data_generators import (
     generate_random_product,
 )
 
-app = FastAPI(
-    title="Chapter 5 - Simple Data Producers",
-    description=(
-        "Toy e-commerce APIs that expose customers, products and orders, "
-        "and produce corresponding Kafka events."
-    ),
-    version="1.1.0",
-)
+from .pubsub_publisher import PubSubPublisher
 
-producer: Producer | None = None
+
+app = FastAPI(
+    title=settings.app_name,
+    description="E-Commerce APIs that expose customers, products and orders.",
+    version=settings.app_version,
+)
 
 # In-memory "database"
 customers_db: List[Customer] = []
@@ -41,313 +35,193 @@ order_counter: int = 0
 @app.on_event("startup")
 def startup_event() -> None:
     """
-    Create the Kafka producer and initialize our in-memory data.
+    Initialize our in-memory data. No external systems involved.
     """
-    global producer, customers_db, products_db
+    global customers_db, products_db
     global customer_counter, product_counter, order_counter
+    global publisher
 
-    producer = create_kafka_producer()
-
-    # Initialize customers and products only once
     if not customers_db:
         customers_db = sample_customers()
     if not products_db:
         products_db = sample_products()
 
-    # Initialize counters from existing data
     customer_counter = max((c.id or 0) for c in customers_db) if customers_db else 0
     product_counter = max((p.id or 0) for p in products_db) if products_db else 0
     order_counter = max((o.id or 0) for o in orders_db) if orders_db else 0
 
+    if settings.pubsub_enabled:
+        publisher = PubSubPublisher(settings.gcp_project_id, settings.pubsub_orders_topic)
 
-@app.on_event("shutdown")
-def shutdown_event() -> None:
-    """
-    Close the Kafka producer when the API shuts down.
-    """
-    global producer
-    if producer is not None:
-        producer.flush()
-        producer = None
 
 
 @app.get("/", tags=["root"])
 def root():
-    return {
-        "message": "Chapter 5 producers are running. Visit /docs for the API UI."
-    }
+    return {"message": "Chapter 5 producers are running. Visit /docs for the API UI."}
 
 
 @app.get("/health", tags=["health"])
 def health_check():
-    """
-    Simple health endpoint to verify the API is running.
-    """
-    return {"status": "ok"}
+    return {
+        "status": "ok",
+        "pubsub_enabled": settings.pubsub_enabled,
+        "pubsub_topic": settings.pubsub_orders_topic if settings.pubsub_enabled else None,
+    }
 
 
 # ----------------------------
-# Customers API + producer
+# Customers API
 # ----------------------------
-
 @app.get("/customers", response_model=List[Customer], tags=["customers"])
 def get_customers():
-    """
-    Return all customers currently in memory.
-
-    This will also emit each customer to Kafka when called.
-    """
-    global producer, customers_db
-
-    if producer is not None:
-        for customer in customers_db:
-            send_event(
-                producer=producer,
-                topic=settings.topic_customers,
-                key=customer.id,
-                value=customer.model_dump(),
-            )
-
     return customers_db
 
 
 @app.post("/customers_create_manual", response_model=Customer, status_code=201, tags=["customers"])
 def create_customer(customer: Customer):
-    """
-    Create a new customer manually via the API.
+    global customers_db, customer_counter
 
-    If the 'id' is not provided, it is assigned automatically.
-    """
-    global customers_db, customer_counter, producer
-
-    # Auto-assign ID if missing
     if customer.id is None:
         customer_counter += 1
         customer.id = customer_counter
     else:
         if any(c.id == customer.id for c in customers_db):
-            raise HTTPException(
-                status_code=400, detail="Customer with this ID already exists"
-            )
+            raise HTTPException(status_code=400, detail="Customer with this ID already exists")
         customer_counter = max(customer_counter, customer.id)
 
     customers_db.append(customer)
-
-    if producer is not None:
-        send_event(
-            producer=producer,
-            topic=settings.topic_customers,
-            key=customer.id,
-            value=customer.model_dump(),
-        )
-
     return customer
 
 
-@app.post(
-    "/customers_generate",
-    response_model=List[Customer],
-    status_code=201,
-    tags=["customers"],
-)
+@app.post("/customers_generate", response_model=List[Customer], status_code=201, tags=["customers"])
 def generate_customers(count: int = 1):
-    """
-    Generate 'count' new random customers and emit them to Kafka.
-    """
-    global customers_db, customer_counter, producer
+    global customers_db, customer_counter
 
     new_customers: List[Customer] = []
-
     for _ in range(count):
         customer_counter += 1
         new_customer = generate_random_customer(customer_counter)
         customers_db.append(new_customer)
         new_customers.append(new_customer)
 
-        if producer is not None:
-            send_event(
-                producer=producer,
-                topic=settings.topic_customers,
-                key=new_customer.id,
-                value=new_customer.model_dump(),
-            )
-
     return new_customers
 
 
 # ----------------------------
-# Products API + producer
+# Products API
 # ----------------------------
-
 @app.get("/products", response_model=List[Product], tags=["products"])
 def get_products():
-    """
-    Return all products currently in memory.
-
-    This will also emit each product to Kafka when called.
-    """
-    global producer, products_db
-
-    if producer is not None:
-        for product in products_db:
-            send_event(
-                producer=producer,
-                topic=settings.topic_products,
-                key=product.id,
-                value=product.model_dump(),
-            )
-
     return products_db
 
 
 @app.post("/products_create_manual", response_model=Product, status_code=201, tags=["products"])
 def create_product(product: Product):
-    """
-    Create a new product manually via the API.
-
-    If the 'id' is not provided, it is assigned automatically.
-    """
-    global products_db, product_counter, producer
+    global products_db, product_counter
 
     if product.id is None:
         product_counter += 1
         product.id = product_counter
     else:
         if any(p.id == product.id for p in products_db):
-            raise HTTPException(
-                status_code=400, detail="Product with this ID already exists"
-            )
+            raise HTTPException(status_code=400, detail="Product with this ID already exists")
         product_counter = max(product_counter, product.id)
 
     products_db.append(product)
-
-    if producer is not None:
-        send_event(
-            producer=producer,
-            topic=settings.topic_products,
-            key=product.id,
-            value=product.model_dump(),
-        )
-
     return product
 
 
-@app.post(
-    "/products_generate",
-    response_model=List[Product],
-    status_code=201,
-    tags=["products"],
-)
+@app.post("/products_generate", response_model=List[Product], status_code=201, tags=["products"])
 def generate_products(count: int = 1):
-    """
-    Generate 'count' new random products and emit them to Kafka.
-    """
-    global products_db, product_counter, producer
+    global products_db, product_counter
 
     new_products: List[Product] = []
-
     for _ in range(count):
         product_counter += 1
         new_product = generate_random_product(product_counter)
         products_db.append(new_product)
         new_products.append(new_product)
 
-        if producer is not None:
-            send_event(
-                producer=producer,
-                topic=settings.topic_products,
-                key=new_product.id,
-                value=new_product.model_dump(),
-            )
-
     return new_products
 
 
 # ----------------------------
-# Orders API + producer
+# Orders API
 # ----------------------------
-@app.get(
-    "/orders",
-    response_model=List[Order],
-    tags=["orders"],
-)
+@app.get("/orders", response_model=List[Order], tags=["orders"])
 def get_orders_history():
-    """
-    Return the full list of orders generated or created so far.
-    """
-    global orders_db
     return orders_db
 
 
 @app.post("/orders_create_manual", response_model=Order, status_code=201, tags=["orders"])
 def create_order(order: Order):
-    """
-    Create an order manually via the API.
+    global orders_db, order_counter, customers_db, products_db, publisher
 
-    - If 'id' is missing, it's assigned automatically.
-    - You must provide a consistent 'total_amount' for now.
-      (You could extend this to calculate from product price.)
-    """
-    global orders_db, order_counter, producer
+    # Referential integrity checks
+    if not any(c.id == order.customer_id for c in customers_db):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Customer with id={order.customer_id} does not exist"
+        )
 
+    if not any(p.id == order.product_id for p in products_db):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Product with id={order.product_id} does not exist"
+        )
+
+    # Order ID handling
     if order.id is None:
         order_counter += 1
         order.id = order_counter
     else:
         if any(o.id == order.id for o in orders_db):
             raise HTTPException(
-                status_code=400, detail="Order with this ID already exists"
+                status_code=400,
+                detail="Order with this ID already exists"
             )
         order_counter = max(order_counter, order.id)
 
+    # Persist order in the "database" first (only publish if persisted successfully)
     orders_db.append(order)
 
-    if producer is not None:
-        send_event(
-            producer=producer,
-            topic=settings.topic_orders,
-            key=order.id,
-            value=order.model_dump(),
-        )
+    # Publish to Pub/Sub if enabled (speed layer feed)
+    if settings.pubsub_enabled and publisher is not None:
+        publisher.publish_json(order.model_dump())
 
     return order
 
 
-@app.get(
-    "/orders_generate",
-    response_model=List[Order],
-    tags=["orders"],
-)
+@app.get("/orders_generate", response_model=List[Order], tags=["orders"])
 def generate_orders(count: int = 5):
-    """
-    Generate N random orders and emit them to Kafka.
+    global order_counter, orders_db, customers_db, products_db, publisher
 
-    Order IDs keep increasing across calls, so each new order
-    gets a unique, incremental ID for this server run.
-    """
-    global producer, order_counter, orders_db
+    if not customers_db or not products_db:
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot generate orders: customers and/or products are empty. Generate them first."
+        )
 
     orders: List[Order] = []
 
-    # Start from the next available ID
     start_id = order_counter + 1
     end_id = order_counter + count
 
     for order_id in range(start_id, end_id + 1):
-        order = generate_random_order(order_id=order_id)
+        order = generate_random_order(
+            order_id=order_id,
+            customers=customers_db,
+            products=products_db,
+        )
+
+        # Persist orders in the "database" first (only publish if persisted successfully)
         orders.append(order)
         orders_db.append(order)
 
-        if producer is not None:
-            send_event(
-                producer=producer,
-                topic=settings.topic_orders,
-                key=order.id,
-                value=order.model_dump(),
-            )
+        # Publish each order event
+        if settings.pubsub_enabled and publisher is not None:
+            publisher.publish_json(order.model_dump())
 
-    # Update the global counter so next call continues from here
+
     order_counter = end_id
-
     return orders
-

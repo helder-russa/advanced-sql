@@ -1,81 +1,28 @@
 # Producers – Setup Guide
 
 This folder contains the **simple data producers** used in Chapter 5.  
-They expose three APIs (**customers**, **products**, and **orders**) and publish events to Kafka.
+They expose three APIs (**customers**, **products**, and **orders**) and publish events to PUB/SUB from Google Cloud.
 
-Follow the steps below to install all requirements, run Kafka locally via Docker, and launch the FastAPI app.
+ℹ️  All bash commands presented in this README file are to be executed in your local terminal.
+ℹ️  There's a pre-assumption that all GCP services and APIs, like Storage, BigQuery, Pub/Sub, etc, are already enabled, as well as your own service account with the necessary permissions. Please refer to the book to see how all these setup was made.
 
 ---
 
-## 1. Install Docker & Docker Compose (for Kafka)
+## 1. Install Python Requirements
 
-We run Kafka **inside Docker** so you don’t need to install Kafka or Java manually.
-
-### 1.1 Install Docker Desktop
-Download for your OS:  
-👉 https://www.docker.com/products/docker-desktop/
-
-### 1.2 Launch Docker Desktop
-Make sure Docker Desktop is running before continuing.
-
-### 1.3 Verify installation
-Open your terminal and run the following:
-
-```bash
-docker --version
-docker compose version
-```
-
-### 1.4 Why Docker is used
-Kafka is **not installed directly** on your machine, instead, we use an official `apache/kafka` Docker image and run it via Docker Compose.
-
-### 1.5 About the docker-compose.yml
-Inside this project, you will find:
-
-```bash
-chapter_05/producers/docker-compose.yml
-```
-
-This file is adapted from Confluent’s “Kafka on Docker” example:
-👉 https://developer.confluent.io/confluent-tutorials/kafka-on-docker/
-
-By installing it, you have:
-- A **single Kafka broker**
-- Running in **KRaft mode** (no ZooKeeper)
-- **Auto-create topics** enabled
-- No authentication / SSL which makes it simple for local testing
-
-### 1.6 Start Kafka
-From the terminal, navigate to the folder containing `docker-compose.yml`:
-
-```bash
-cd path/to/chapter_05/producers
-docker compose up -d
-```
-
-### 1.7 Verify Kafka is running
-
-```bash
-docker ps
-```
-
-You should see a container named **kafka** (or similar, using the apache/kafka:latest image).
-
-## 2. Install Python Requirements
-
-### 2.1 Create a virtual environment (not mandatory, but recommended)
+### 1.1 Create a virtual environment (not mandatory, but recommended)
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate      # Windows: .venv\Scripts\activate
 ```
 
-### 2.2 Upgrade pip
+### 1.2 Upgrade pip
 Within the virtual environment, run the following:
 ```bash
 pip install --upgrade pip
 ```
 
-### 2.3 Install the producers library dependencies
+### 1.3 Install the producers library dependencies
 ```bash
 pip install -r requirements.txt
 ```
@@ -83,11 +30,10 @@ pip install -r requirements.txt
 **What each dependency does?**
 - **FastAPI** — Web framework used for the APIs.
 - **Uvicorn** — ASGI server that runs the FastAPI app.
-- **confluent-kafka** — Official Kafka client for producing events.
 - **Pydantic** — Validates request/response schemas.
 - **python-dotenv** — Optional helper for environment variables.
 
-## 3. Start the FastAPI App
+## 2. Start the FastAPI App
 ⚠️ Important: Run this from the producers folder (not inside src).
 
 From your virtual environment:
@@ -100,10 +46,10 @@ You should see in you console (or similar):
 INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
 ```
 
-## 4. Explore the APIs
+## 3. Explore the APIs
 Open:
 
-👉 http://127.0.0.1:8000/docs -> This is the interactive Swagger UI provided by FastAPI. 
+🔗 http://127.0.0.1:8000/docs -> This is the interactive Swagger UI provided by FastAPI. 
 
 Here you can:
 - View all customers, products, and orders
@@ -117,6 +63,108 @@ Every API call will:
 - Produce a message to the corresponding Kafka topic (customers, products, orders)
 
 Just expand any endpoint and click “Try it out”.
+
+## 4. Deploying the Producers to Cloud Run - important for end to end solution
+If Swagger is working correctly locally, the next step is to deploy the producers API to Cloud Run.
+This is required so that other managed services (Pub/Sub, Dataproc) can reach the API and we can build the full end-to-end pipeline.
+
+From the `chapter_05/` folder, run:
+
+```bash
+gcloud auth activate-service-account --key-file=REPLACE-BY-YOUR-SA-KEY.json
+gcloud config set project advance-sql-de-demo
+
+gcloud run deploy ch05-producers-api \
+  --source . \
+  --region europe-west1 \
+  --allow-unauthenticated
+  ```
+
+⚠️ By using `--allow-unauthenticated` (the simplest option for a tutorial), you are exposing the API, and therefore Swagger, publicly.
+This means anyone with the URL could generate data. For a production setup, you would restrict access using IAM or identity-aware proxy (IAP). For this tutorial, we keep it simple.
+
+Once the deployment completes, copy the Service URL and open it in your browser. It should look similar to:
+🔗 https://ch05-producers-api-xxxxx.a.run.app/docs
+
+You should now see the same Swagger UI you used locally, but running in Cloud Run.
+
+## 5. Setting up Pub/Sub (speed layer entry point)
+Next, we create the Pub/Sub infrastructure that will receive order events emitted by the producers.
+
+### 5.1 Create the topic and a debug subscription
+```bash
+gcloud config set project advance-sql-de-demo
+
+gcloud pubsub topics create orders
+
+gcloud pubsub subscriptions create orders-debug-sub \
+  --topic=orders
+```
+
+ℹ️ The `orders-debug-sub` subscription is created only for validation and debugging. It allows us to manually inspect messages and confirm that orders are being published correctly. This will not be the final subscription used by the streaming pipeline.
+
+### 5.2 Verify creation
+Check if the topic exists:
+```bash
+gcloud pubsub topics list
+```
+
+Check if the subscription exists:
+```bash
+gcloud pubsub subscriptions list
+```
+
+If both lists are with the topic and subscription, we can continue to the last configuration.
+
+### 5.3 Grant Cloud Run permission to publish to Pub/Sub
+Your Cloud Run service runs using a service account identity. That service account must be explicitly allowed to publish messages to Pub/Sub.
+
+First, retrieve the service account used by the Cloud Run service:
+```bash
+gcloud run services describe ch05-producers-api \
+  --region europe-west1 \
+  --format='value(spec.template.spec.serviceAccountName)'
+```
+
+Store it in a variable and grant the required role:
+```bash
+SA_EMAIL="REPLACE-BY-YOUR-SA-FROM-PREVIOUS-BATCH-COMMAND"
+
+gcloud projects add-iam-policy-binding advance-sql-de-demo \
+  --member="serviceAccount:${SA_EMAIL}" \
+  --role="roles/pubsub.publisher"
+```
+
+### 5.4 Redeploy Cloud Run with Pub/Sub configuration
+
+Now redeploy the service, this time enabling Pub/Sub publishing via environment variables.
+
+From the `chapter_05/` folder:
+```bash
+gcloud run deploy ch05-producers-api \
+  --source . \
+  --region europe-west1 \
+  --allow-unauthenticated \
+  --set-env-vars GCP_PROJECT_ID=advance-sql-de-demo,PUBSUB_ORDERS_TOPIC=orders,PUBSUB_ENABLED=true
+```
+
+This deployment:
+- keeps the same API and Swagger UI
+- enables order event publication to Pub/Sub
+- does not change any local development behavior
+
+### 5.5 Verify end-to-end event emission
+1. Open Cloud Run Swagger `/docs`
+2. Generate customers/products
+3. Generate orders
+
+Then, if you were able to generate everything, let's pull some messages from pubsub to make sure we are sending correctly the events to there:
+```bash
+gcloud pubsub subscriptions pull orders-debug-sub --limit=5 --auto-ack
+```
+
+ℹ️ As soon as a message is acknowledged, it is removed from the subscription and will not be delivered again for that subscription. This is expected behavior and matches the at-least-once delivery semantics of Pub/Sub.
+
 
 ## Troubleshooting:
 

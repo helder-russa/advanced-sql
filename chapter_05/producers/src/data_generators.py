@@ -3,7 +3,7 @@
 # src/data_generators.py
 
 from datetime import datetime
-from random import choice, randint, uniform
+import random
 from typing import List
 
 from .models import Customer, Product, Order
@@ -32,8 +32,8 @@ def generate_random_customer(customer_id: int) -> Customer:
     last_names = ["Johnson", "Costa", "Lopes", "Ferreira", "Silva", "Gomes", "Martins", "Rodriguez", "Smith", "Brown", "Davis", "Schmidt", "Garcia", "Lopez", "Müller", "Taylor", "Williams"]
     countries = ["PT", "ES", "FR", "DE", "IT", "US", "BR", "GB", "NL", "BE", "SE", "NO", "DK", "FI", "CH", "AU"]
 
-    first = choice(first_names)
-    last = choice(last_names)
+    first = random.choice(first_names)
+    last = random.choice(last_names)
     full_name = f"{first} {last}"
     email = f"{first.lower()}.{last.lower()}_{customer_id}@example.com"
 
@@ -41,7 +41,7 @@ def generate_random_customer(customer_id: int) -> Customer:
         id=customer_id,
         name=full_name,
         email=email,
-        country=choice(countries),
+        country=random.choice(countries),
     )
 
 
@@ -53,10 +53,30 @@ def generate_random_product(product_id: int) -> Product:
         ("Hoodie", "Apparel"),
         ("Cap", "Accessories"),
         ("Backpack", "Accessories"),
+        ("Sunglasses", "Accessories"),
+        ("Leather Jacket", "Apparel"),
+        ("Sports Watch", "Accessories"),
+        ("Formal Shoes", "Footwear"),
+        ("Graphic T-Shirt", "Apparel"),
+        ("Chinos", "Apparel"),
+        ("Sandals", "Footwear"),
+        ("Beanie", "Accessories"),
+        ("Fitness Tracker", "Accessories"),
+        ("Denim Jacket", "Apparel"),
+        ("Loafers", "Footwear"),
+        ("Winter Coat", "Apparel"),
+        ("Travel Bag", "Accessories"),
+        ("Flip Flops", "Footwear"),
+        ("Sports Cap", "Accessories"),
+        ("Sweater", "Apparel"),
+        ("Hiking Boots", "Footwear"),
+        ("Wristwatch", "Accessories"),
+        ("Ski Jacket", "Apparel"),
+        ("Dress Shoes", "Footwear"),
     ]
 
-    name, category = choice(product_names)
-    base_price = uniform(5.0, 120.0)
+    name, category = random.choice(product_names)
+    base_price = random.uniform(5.0, 120.0)
     price = round(base_price, 2)
 
     return Product(
@@ -67,14 +87,16 @@ def generate_random_product(product_id: int) -> Product:
     )
 
 
-def generate_random_order(order_id: int) -> Order:
-    customers = sample_customers()
-    products = sample_products()
+def generate_random_order(order_id: int, customers: List[Customer], products: List[Product]) -> Order:
+    if not customers:
+        raise ValueError("customers list is empty")
+    if not products:
+        raise ValueError("products list is empty")
 
-    customer = choice(customers)
-    product = choice(products)
+    customer = random.choice(customers)
+    product = random.choice(products)
 
-    quantity = randint(1, 5)
+    quantity = random.randint(1, 5)
     total_amount = round(product.price * quantity, 2)
 
     return Order(
@@ -84,5 +106,5 @@ def generate_random_order(order_id: int) -> Order:
         quantity=quantity,
         total_amount=total_amount,
         currency="EUR",
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(),
     )
