@@ -1,9 +1,10 @@
-# Producers – Setup Guide
+# Chapter 05 - Producers – Setup Guide
 
 This folder contains the **simple data producers** used in Chapter 5.  
 They expose three APIs (**customers**, **products**, and **orders**) and publish events to PUB/SUB from Google Cloud.
 
 ℹ️  All bash commands presented in this README file are to be executed in your local terminal.
+
 ℹ️  There's a pre-assumption that all GCP services and APIs, like Storage, BigQuery, Pub/Sub, etc, are already enabled, as well as your own service account with the necessary permissions. Please refer to the book to see how all these setup was made.
 
 ---
@@ -41,7 +42,7 @@ From your virtual environment:
 python -m uvicorn src.main:app --reload
 ```
 
-You should see in you console (or similar):
+You should see in your console (or similar):
 ```bash
 INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
 ```
@@ -166,7 +167,7 @@ gcloud pubsub subscriptions pull orders-debug-sub --limit=5 --auto-ack
 ℹ️ As soon as a message is acknowledged, it is removed from the subscription and will not be delivered again for that subscription. This is expected behavior and matches the at-least-once delivery semantics of Pub/Sub.
 
 
-## Troubleshooting:
+## Troubleshooting
 
 ### **Port already in use**
 If you receive the error:
