@@ -56,8 +56,24 @@ gcloud pubsub subscriptions create orders-to-gcs-sub \
 
 👉 This replaces the temporary debug subscription used in the producers (`orders-debug-sub`).
 
-### 1.3 Deploy the Cloud Run Job (streaming)
-This job continuously listens to **Pub/Sub** for new events and stores them as raw JSON files in the **Landing** Zone inside your `$BUCKET`.
+### 1.3 Service Account (streaming ingestion)
+```bash
+gcloud iam service-accounts create ch05-streaming-ingestion-sa \
+  --display-name="Streaming Ingestion SA"
+```
+
+Grant minimum permissions:
+```bash
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+  --member="serviceAccount:ch05-streaming-ingestion-sa@$PROJECT_ID.iam.gserviceaccount.com" \
+  --role="roles/pubsub.subscriber"
+
+gcloud storage buckets add-iam-policy-binding "gs://$BUCKET" \
+  --member="serviceAccount:ch05-streaming-ingestion-sa@$PROJECT_ID.iam.gserviceaccount.com" \
+  --role="roles/storage.objectCreator"
+```
+### 1.4 Deploy the Cloud Run Job (streaming)
+This job continuously listens to **Pub/Sub** for new events and stores them as raw JSON files in the **Landing Zone** inside your `$BUCKET`.
 
 The Landing Zone acts as the system’s entry point: data is captured exactly as produced, without transformation, and made available for downstream processing.
 
@@ -67,6 +83,7 @@ JOB_NAME="ch05-streaming-ingestion-job"
 gcloud run jobs deploy "$JOB_NAME" \
   --region="$REGION" \
   --source="chapter_05/consumers/streaming_ingestion" \
+  --service-account="ch05-streaming-ingestion-sa@$PROJECT_ID.iam.gserviceaccount.com" \
   --set-env-vars="PROJECT_ID=$PROJECT_ID,SUBSCRIPTION_ID=orders-to-gcs-sub,BUCKET=$BUCKET,GCS_PREFIX=landing_zone/streaming/orders,MAX_MESSAGES=500,MAX_LOOPS=20,PULL_TIMEOUT=10"
 ```
 
@@ -119,7 +136,33 @@ Batch ingestion is implemented using **Cloud Run Jobs**, with **one job per enti
 
 Unlike streaming ingestion, where data is pulled from Pub/Sub. batch ingestion retrieves data directly from the API exposed by the **Producers** service.
 
-### 3.1 Deploy batch jobs
+### 3.1 Service Account (batch ingestion)
+```bash
+gcloud iam service-accounts create ch05-batch-ingestion-sa \
+  --display-name="Batch Ingestion SA"
+
+gcloud storage buckets add-iam-policy-binding "gs://$BUCKET" \
+  --member="serviceAccount:ch05-batch-ingestion-sa@$PROJECT_ID.iam.gserviceaccount.com" \
+  --role="roles/storage.objectCreator" 
+
+gcloud storage buckets add-iam-policy-binding "gs://$BUCKET" \
+  --member="serviceAccount:ch05-batch-ingestion-sa@$PROJECT_ID.iam.gserviceaccount.com" \
+  --role="roles/storage.objectUser"
+
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+  --member="serviceAccount:ch05-batch-ingestion-sa@$PROJECT_ID.iam.gserviceaccount.com" \
+  --role="roles/bigquery.user" 
+
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+  --member="serviceAccount:ch05-batch-ingestion-sa@$PROJECT_ID.iam.gserviceaccount.com" \
+  --role="roles/bigquery.dataEditor" 
+
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+  --member="serviceAccount:ch05-batch-ingestion-sa@$PROJECT_ID.iam.gserviceaccount.com" \
+  --role="roles/bigquerydatatransfer.serviceAgent" 
+```
+
+### 3.2 Deploy batch jobs
 These jobs, one per entity, are responsible to pull the data from API and store it in the `landing_zone/batch` within your `$BUCKET`.
 
 Each batch job is responsible for:
@@ -134,6 +177,7 @@ gcloud run jobs deploy ch05-batch-ingestion-customers \
   --project="$PROJECT_ID" \
   --region="$REGION" \
   --source="chapter_05/consumers/batch_ingestion" \
+  --service-account="ch05-batch-ingestion-sa@$PROJECT_ID.iam.gserviceaccount.com" \
   --command="python" \
   --args="main.py" \
   --set-env-vars="BUCKET=$BUCKET,GCS_PREFIX=landing_zone/batch,API_BASE_URL=$API_BASE_URL,HTTP_TIMEOUT=30,ENTITY=customers"
@@ -143,6 +187,7 @@ gcloud run jobs deploy ch05-batch-ingestion-products \
   --project="$PROJECT_ID" \
   --region="$REGION" \
   --source="chapter_05/consumers/batch_ingestion" \
+  --service-account="ch05-batch-ingestion-sa@$PROJECT_ID.iam.gserviceaccount.com" \
   --command="python" \
   --args="main.py" \
   --set-env-vars="BUCKET=$BUCKET,GCS_PREFIX=landing_zone/batch,API_BASE_URL=$API_BASE_URL,HTTP_TIMEOUT=30,ENTITY=products"
@@ -151,6 +196,7 @@ gcloud run jobs deploy ch05-batch-ingestion-orders \
   --project="$PROJECT_ID" \
   --region="$REGION" \
   --source="chapter_05/consumers/batch_ingestion" \
+  --service-account="ch05-batch-ingestion-sa@$PROJECT_ID.iam.gserviceaccount.com" \
   --command="python" \
   --args="main.py" \
   --set-env-vars="BUCKET=$BUCKET,GCS_PREFIX=landing_zone/batch,API_BASE_URL=$API_BASE_URL,HTTP_TIMEOUT=30,ENTITY=orders"
@@ -256,12 +302,34 @@ spark.sql.catalog.local.warehouse=gs://$BUCKET/iceberg/warehouse" \
   --RESET_TABLE="true" \
   --SPARK_LOG_LEVEL="WARN"
 ```
+## 5. Automated refresh of BigQuery tables to last vN.metadate.json
+
+### 5.1 Deploy batch jobs
+You can do it by hand, just executing per entity the `CREATE OR REPLACE EXTERNAL TABLE `advance-sql-de-demo.bronze.ENTITY`` code within `chapter_05/sql/ddl` folder, updating the respective URI for the new metadata file. The following job executes a script that automates it, leveraging cloud run.
+
+```bash
+BQ_CONNECTION="projects/$PROJECT_ID/locations/$REGION/connections/adv-sql-de-bigquery-biglake-conn"
+
+BQ_DATASET="bronze"
+
+gcloud run jobs deploy ch05-refresh-bq-iceberg-tables \
+  --region="$REGION" \
+  --source="chapter_05/consumers/helper/refresh_bq_iceberg_tables" \
+  --service-account="ch05-batch-ingestion-sa@$PROJECT_ID.iam.gserviceaccount.com" \
+  --set-env-vars="PROJECT_ID=$PROJECT_ID,BUCKET=$BUCKET,BQ_DATASET=$BQ_DATASET,BQ_CONNECTION=$BQ_CONNECTION,WAREHOUSE_PREFIX=iceberg/warehouse,ICEBERG_DB=bronze"
+```
+
+Execute the job:
+
+```bash
+gcloud run jobs execute ch05-refresh-bq-iceberg-tables --region="$REGION"
+```
 
 ## Troubleshooting
 
 ### Pub/Sub job runs but no data appears in GCS
 
-To tackle this issue, check some of the following scenarions:
+To tackle this issue, check some of the following scenarios:
 
 - Producers are actively publishing events.
 - The subscription name is correct.
@@ -311,4 +379,4 @@ Fix:
 ```bash
 DROP TABLE bronze.orders;
 ```
-- Within the Batch-to-Bronze data movement process, the Dataproc execution includes a field named `RESET_TABLE`. When set to `true`, , this field drops the local column table associated with the specified entity.
+- Within the Batch-to-Bronze data movement process, the Dataproc execution includes a field named `RESET_TABLE`. When set to `true`, this field drops the local column table associated with the specified entity.
