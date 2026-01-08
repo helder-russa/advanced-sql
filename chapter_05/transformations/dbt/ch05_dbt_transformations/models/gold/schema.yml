@@ -1,0 +1,59 @@
+version: 2
+
+models:
+  - name: fct_orders
+    description: >
+      Orders fact table used as the primary source for revenue and order-volume analytics.
+    columns:
+      - name: order_id
+        description: Primary order identifier.
+      - name: customer_id
+        description: Customer identifier.
+      - name: product_id
+        description: Product identifier.
+      - name: created_at
+        description: Event time of order creation (normalized to TIMESTAMP).
+      - name: total_amount
+        description: Total monetary amount for the order.
+      - name: quantity
+        description: Number of units ordered for the product.
+      - name: unit_price  
+        description: Unit price of the product.
+
+  - name: dim_customers
+    description: >
+      Customers dimension table containing customer details.
+    columnss:
+      - name: customer_id
+        description: Primary customer identifier.
+      - name: customer_name
+        description: Customer's full name.
+      - name: email
+        description: Customer's email address.
+      - name: country
+        description: Customer's country of residence.
+
+  - name: dim_products
+    description: >
+      Products dimension table containing product details.
+    columns:
+      - name: product_id
+        description: Primary product identifier.
+      - name: product_name  
+        description: Name of the product.
+      - name: category
+        description: Category to which the product belongs.
+      - name: price
+        description: Price of the product.
+
+  - name: mart_customer_orders
+    description: >
+      Customer orders mart aggregating total spend and order counts per customer.
+
+  - name: mart_revenue_by_category_daily
+    description: >
+      Revenue mart aggregating revenue by product category and order date.
+
+  - name: mart_sales
+    description: >
+      Sales mart aggregating revenue and total sales by order date.

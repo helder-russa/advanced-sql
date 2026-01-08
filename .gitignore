@@ -5,4 +5,7 @@ __pycache__/
 .venv/
 .env
 .git/
+.secrets/
 chapter_05/advance-sql-de-demo-sa.json
+chapter_05/transformations/dbt/logs/dbt.log
+.DS_Store

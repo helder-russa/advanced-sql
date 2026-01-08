@@ -10,6 +10,8 @@ It ingests data from **streaming (Pub/Sub)** and **batch APIs**, lands it in **G
 > - Spark is used **explicitly** as the ingestion and structuring engine.
 > - Resource constraints (Dataproc Serverless quotas) are real and documented.
 
+⚠️ Ensure that all CLI executions which reference local files are run from the root directory `ÀDVANCED_SQL`
+
 ---
 
 ## Architecture at a Glance

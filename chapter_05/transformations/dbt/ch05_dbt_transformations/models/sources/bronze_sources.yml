@@ -1,0 +1,11 @@
+version: 2
+
+sources:
+  - name: bronze
+    database: advance-sql-de-demo
+    schema: bronze
+    tables:
+      - name: customers
+      - name: products
+      - name: orders
+      - name: live_orders
