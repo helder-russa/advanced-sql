@@ -302,13 +302,13 @@ spark.sql.catalog.local.warehouse=gs://$BUCKET/iceberg/warehouse" \
   --RESET_TABLE="true" \
   --SPARK_LOG_LEVEL="WARN"
 ```
-## 5. Automated refresh of BigQuery tables to last vN.metadate.json
+## 5. Automated refresh of BigQuery tables to last vN.metadata.json
 
 ### 5.1 Deploy batch jobs
-You can do it by hand, just executing per entity the `CREATE OR REPLACE EXTERNAL TABLE `advance-sql-de-demo.bronze.ENTITY`` code within `chapter_05/sql/ddl` folder, updating the respective URI for the new metadata file. The following job executes a script that automates it, leveraging cloud run.
+You can do it by hand, just executing per entity the `CREATE OR REPLACE EXTERNAL TABLE advance-sql-de-demo.bronze.ENTITY` code within `chapter_05/sql/ddl` folder, updating the respective URI for the new metadata file. The following job executes a script that automates it, leveraging cloud run.
 
 ```bash
-BQ_CONNECTION="projects/$PROJECT_ID/locations/$REGION/connections/adv-sql-de-bigquery-biglake-conn"
+BQ_CONNECTION="projects/$PROJECT_ID/locations/$REGION/connections/<REPLACE BY YOUR BQ BIGLAKE CONNECTION>"
 
 BQ_DATASET="bronze"
 
