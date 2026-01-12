@@ -1,0 +1,24 @@
+# This file is not the one used locally, but the one who's deployed in docker.
+ch05_dbt_transformations:
+  target: dev
+  outputs:
+    dev:
+      type: bigquery
+      method: oauth # While locally we use service account, this works in practice because ADC is provided by the runtime identity (no JSON key file)
+      project: advance-sql-de-demo
+      dataset: bronze
+      location: europe-west1
+      threads: 4
+      job_execution_timeout_seconds: 300
+      job_retries: 1
+  target: prod
+  outputs:
+    prod:
+      type: bigquery
+      method: oauth # While locally we use service account, this works in practice because ADC is provided by the runtime identity (no JSON key file)
+      project: advance-sql-de-demo
+      dataset: bronze
+      location: europe-west1
+      threads: 4
+      job_execution_timeout_seconds: 300
+      job_retries: 1

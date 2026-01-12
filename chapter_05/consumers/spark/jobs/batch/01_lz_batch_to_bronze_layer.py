@@ -54,7 +54,6 @@ def schema_products() -> StructType:
 
 
 def schema_orders() -> StructType:
-    # aligned to your raw order JSON you showed
     return StructType([
         StructField("id", LongType(), True),
         StructField("customer_id", LongType(), True),
@@ -63,8 +62,8 @@ def schema_orders() -> StructType:
         StructField("total_amount", DoubleType(), True),
         StructField("currency", StringType(), True),
         StructField("created_at", StringType(), True),  # "2026-01-06 11:26:26.043133"
-        StructField("status", StringType(), True),      # missing in payload -> defaulted
-        StructField("source", StringType(), True),      # missing in payload -> defaulted
+        StructField("status", StringType(), True),      # if in the future we have different statuses
+        StructField("source", StringType(), True),      # if in the future we have multiple sources
         StructField("_pubsub_message_id", StringType(), True),
         StructField("_pubsub_publish_time", StringType(), True),
         StructField("_ingest_time_utc", StringType(), True),

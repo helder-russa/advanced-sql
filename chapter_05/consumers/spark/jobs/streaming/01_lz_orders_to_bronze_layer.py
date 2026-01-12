@@ -17,7 +17,7 @@ from pyspark.sql.functions import (
 # Schema (Landing Zone JSON)
 # ----------------------------
 def landing_zone_schema() -> StructType:
-    # Matches your actual payload (example you shared)
+    # Matches actual payload
     # {"id":19,"customer_id":2,"product_id":5,"quantity":1,"total_amount":94.18,"currency":"EUR",
     #  "created_at":"2026-01-06 11:26:26.043133",
     #  "_pubsub_message_id":"...","_pubsub_publish_time":"...","_ingest_time_utc":"..."}

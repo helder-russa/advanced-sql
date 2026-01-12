@@ -1,5 +1,7 @@
 Welcome to your new dbt project!
 
+⚠️ Please refer to transformations/README.md for setup guide
+
 ### Using the starter project
 
 Try running the following commands:

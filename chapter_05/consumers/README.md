@@ -10,7 +10,7 @@ It ingests data from **streaming (Pub/Sub)** and **batch APIs**, lands it in **G
 > - Spark is used **explicitly** as the ingestion and structuring engine.
 > - Resource constraints (Dataproc Serverless quotas) are real and documented.
 
-⚠️ Ensure that all CLI executions which reference local files are run from the root directory `ÀDVANCED_SQL`
+⚠️ Ensure that all CLI executions which reference local files are run from the root directory: `ÀDVANCED_SQL`
 
 ---
 
@@ -183,7 +183,6 @@ gcloud run jobs deploy ch05-batch-ingestion-customers \
   --command="python" \
   --args="main.py" \
   --set-env-vars="BUCKET=$BUCKET,GCS_PREFIX=landing_zone/batch,API_BASE_URL=$API_BASE_URL,HTTP_TIMEOUT=30,ENTITY=customers"
-
 
 gcloud run jobs deploy ch05-batch-ingestion-products \
   --project="$PROJECT_ID" \
@@ -382,3 +381,8 @@ Fix:
 DROP TABLE bronze.orders;
 ```
 - Within the Batch-to-Bronze data movement process, the Dataproc execution includes a field named `RESET_TABLE`. When set to `true`, this field drops the local column table associated with the specified entity.
+
+### Iceberg metadata updated but BigQuery not refreshed
+- Iceberg commits are automatic
+- BigQuery external tables must be refreshed or recreated
+- This is handled by the provided refresh job described in this README.md file, point 5.

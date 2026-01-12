@@ -1,7 +1,7 @@
 # Chapter 05 - Producers – Setup Guide
 
-This folder contains the **simple data producers** used in Chapter 5.  
-They expose three APIs (**customers**, **products**, and **orders**) and publish events to PUB/SUB from Google Cloud.
+This folder contains the **simple data producers** used in Chapter 5 to simulate a simple ratail operational database.  
+They expose three APIs (`customers`, `products`, and `orders`) and publish `orders` events to PUB/SUB from Google Cloud.
 
 ℹ️  All bash commands presented in this README file are to be executed in your local terminal.
 
@@ -9,21 +9,47 @@ They expose three APIs (**customers**, **products**, and **orders**) and publish
 
 ---
 
-## 1. Install Python Requirements
+## How this is meant to be used
 
-### 1.1 Create a virtual environment (not mandatory, but recommended)
+There are two distinct usage modes, and it is important not to confuse them.
+
+1) **Local exploration (optional, learning-oriented)**
+
+Running the producers locally allows you to:
+- inspect payloads
+- understand schemas
+- experiment with Swagger
+- manually generate test data
+
+This is only for understanding and validation.
+> Data generated locally will **not** be ingested into GCS, Pub/Sub, or BigQuery.
+
+2) **Cloud execution (required for the pipeline)**
+For the end-to-end pipeline described in Chapter 5, the producers must run on Cloud Run so that:
+- Pub/Sub can receive streaming events
+- batch ingestion jobs can reach the APIs
+- everything runs in managed infrastructure
+
+---
+
+## 1. Local execution (optional)
+Use this only if you want to explore the APIs.
+
+### 1.1 Install Python Requirements
+
+#### 1.1.1 Create a virtual environment (not mandatory, but recommended)
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate      # Windows: .venv\Scripts\activate
 ```
 
-### 1.2 Upgrade pip
+### 1.1.2 Upgrade pip
 Within the virtual environment, run the following:
 ```bash
 pip install --upgrade pip
 ```
 
-### 1.3 Install the producers library dependencies
+### 1.1.3 Install the producers library dependencies
 ```bash
 pip install -r requirements.txt
 ```
@@ -34,7 +60,7 @@ pip install -r requirements.txt
 - **Pydantic** — Validates request/response schemas.
 - **python-dotenv** — Optional helper for environment variables.
 
-## 2. Start the FastAPI App
+### 1.2 Start the FastAPI App
 ⚠️ Important: Run this from the producers folder (not inside src).
 
 From your virtual environment:
@@ -47,7 +73,7 @@ You should see in your console (or similar):
 INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
 ```
 
-## 3. Explore the APIs
+### 1.3 Explore the APIs
 Open:
 
 🔗 http://127.0.0.1:8000/docs -> This is the interactive Swagger UI provided by FastAPI. 
@@ -65,9 +91,11 @@ Every API call will:
 
 Just expand any endpoint and click “Try it out”.
 
-## 4. Deploying the Producers to Cloud Run - important for end to end solution
-If Swagger is working correctly locally, the next step is to deploy the producers API to Cloud Run.
-This is required so that other managed services (Pub/Sub, Dataproc) can reach the API and we can build the full end-to-end pipeline.
+## 2. Cloud deployment (required)
+This is the core setup used by the rest of Chapter 5.
+
+### 2.1 Deploying the Producers to Cloud Run - important for end to end solution
+Deploy the producers API to Cloud Run. This is required so that other managed services (Pub/Sub, Dataproc) can reach the API and we can build the full end-to-end pipeline.
 
 From the `chapter_05/` folder, run:
 
@@ -87,15 +115,11 @@ This means anyone with the URL could generate data. For a production setup, you 
 Once the deployment completes, copy the Service URL and open it in your browser. It should look similar to:
 🔗 https://ch05-producers-api-xxxxx.a.run.app/docs
 
-You should now see the same Swagger UI you used locally, but running in Cloud Run.
-
-## 5. Setting up Pub/Sub (speed layer entry point)
+### 2.2 Setting up Pub/Sub (speed layer entry point) - topic creation + subscription test
 Next, we create the Pub/Sub infrastructure that will receive order events emitted by the producers.
 
-### 5.1 Create the topic and a debug subscription
+#### 2.2.1 Create the topic and a debug subscription
 ```bash
-gcloud config set project advance-sql-de-demo
-
 gcloud pubsub topics create orders
 
 gcloud pubsub subscriptions create orders-debug-sub \
@@ -104,7 +128,7 @@ gcloud pubsub subscriptions create orders-debug-sub \
 
 ℹ️ The `orders-debug-sub` subscription is created only for validation and debugging. It allows us to manually inspect messages and confirm that orders are being published correctly. This will not be the final subscription used by the streaming pipeline.
 
-### 5.2 Verify creation
+#### 2.2.2 Verify creation
 Check if the topic exists:
 ```bash
 gcloud pubsub topics list
@@ -115,9 +139,9 @@ Check if the subscription exists:
 gcloud pubsub subscriptions list
 ```
 
-If both lists are with the topic and subscription, we can continue to the last configuration.
+If both lists are with the topic and subscription, we can continue to the next configuration step.
 
-### 5.3 Grant Cloud Run permission to publish to Pub/Sub
+#### 2.2.3 Grant Cloud Run permission to publish to Pub/Sub
 Your Cloud Run service runs using a service account identity. That service account must be explicitly allowed to publish messages to Pub/Sub.
 
 First, retrieve the service account used by the Cloud Run service:
@@ -136,7 +160,7 @@ gcloud projects add-iam-policy-binding advance-sql-de-demo \
   --role="roles/pubsub.publisher"
 ```
 
-### 5.4 Redeploy Cloud Run with Pub/Sub configuration
+#### 2.2.4 Redeploy Cloud Run with Pub/Sub configuration
 
 Now redeploy the service, this time enabling Pub/Sub publishing via environment variables.
 
@@ -154,7 +178,7 @@ This deployment:
 - enables order event publication to Pub/Sub
 - does not change any local development behavior
 
-### 5.5 Verify end-to-end event emission
+#### 2.2.5 Verify end-to-end event emission
 1. Open Cloud Run Swagger `/docs`
 2. Generate customers/products
 3. Generate orders
