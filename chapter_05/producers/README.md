@@ -1,6 +1,6 @@
 # Chapter 05 - Producers – Setup Guide
 
-This folder contains the **simple data producers** used in Chapter 5 to simulate a simple ratail operational database.  
+This folder contains the **simple data producers** used in Chapter 5 to simulate a simple retail operational database.  
 They expose three APIs (`customers`, `products`, and `orders`) and publish `orders` events to PUB/SUB from Google Cloud.
 
 ℹ️  All bash commands presented in this README file are to be executed in your local terminal.
@@ -25,6 +25,7 @@ This is only for understanding and validation.
 > Data generated locally will **not** be ingested into GCS, Pub/Sub, or BigQuery.
 
 2) **Cloud execution (required for the pipeline)**
+
 For the end-to-end pipeline described in Chapter 5, the producers must run on Cloud Run so that:
 - Pub/Sub can receive streaming events
 - batch ingestion jobs can reach the APIs
@@ -100,7 +101,7 @@ Deploy the producers API to Cloud Run. This is required so that other managed se
 From the `chapter_05/` folder, run:
 
 ```bash
-gcloud auth activate-service-account --key-file=REPLACE-BY-YOUR-SA-KEY.json
+gcloud auth application-default login #or gcloud auth activate-service-account --key-file=REPLACE-BY-YOUR-SA-KEY.json
 gcloud config set project advance-sql-de-demo
 
 gcloud run deploy ch05-producers-api \

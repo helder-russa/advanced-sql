@@ -76,9 +76,6 @@ Producers must be deployed and reachable (Cloud Run), because:
 - Streaming ingestion reads from Pub/Sub events produced by the Orders producer
 - Batch ingestion pulls snapshots from the Producers API
 
-Follow:
-- `chapter_05/producers/README.md`
-
 Ultimately, if your `https://ch05-producers-api-xxxxx.a.run.app/docs` is running, and you can generate data, you can move to the next step, otherwise follow `chapter_05/producers/README.md` for producers setup guide.
 
 ### 3. Streaming ingestion (Pub/Sub → Landing Zone → Iceberg Bronze)
@@ -242,8 +239,9 @@ spark.sql.catalog.local.warehouse=gs://$BUCKET/iceberg/warehouse" \
 ### 5. Refresh BigQuery external tables (Iceberg metadata moves)
 Iceberg metadata evolves (v1 → v2 → v3…), and BigQuery external tables may need a refresh.
 
-Follow:
-- `chapter_05/consumers/README.md` (section: `Automated refresh of BigQuery tables to last vN.metadata.json`)
+```bash
+gcloud run jobs execute ch05-refresh-bq-iceberg-tables --region="$REGION"
+```
 
 Expected result:
 - BigQuery sees the latest snapshot/metadata without manual table recreation

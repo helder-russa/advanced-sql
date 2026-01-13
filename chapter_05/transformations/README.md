@@ -101,7 +101,7 @@ gcloud storage buckets add-iam-policy-binding "gs://$DOCS_BUCKET" \
 ```
 
 ## 4. Local execution
-### 4.1 Create a virtual environment  + dbt init - only required if you want dbt run locally otherwise move to step 4.
+### 4.1 Create a virtual environment + dbt init - only required if you want dbt run locally otherwise move to step 45.
 From the `chapter_05/transformations` folder
 
 ```bash
