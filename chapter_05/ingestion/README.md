@@ -1,4 +1,4 @@
-# Chapter 05 - Consumers – Setup Guide
+# Chapter 05 - Ingestion – Setup Guide
 
 This folder contains the **consumer side** of the Chapter 5 pipeline.  
 It ingests data from **streaming (Pub/Sub)** and **batch APIs**, lands it in **GCS (Landing Zone)**, and materializes **Iceberg tables (Bronze layer)** using Spark.
@@ -84,7 +84,7 @@ JOB_NAME="ch05-streaming-ingestion-job"
 
 gcloud run jobs deploy "$JOB_NAME" \
   --region="$REGION" \
-  --source="chapter_05/consumers/streaming_ingestion" \
+  --source="chapter_05/ingestion/streaming_ingestion" \
   --service-account="ch05-streaming-ingestion-sa@$PROJECT_ID.iam.gserviceaccount.com" \
   --set-env-vars="PROJECT_ID=$PROJECT_ID,SUBSCRIPTION_ID=orders-to-gcs-sub,BUCKET=$BUCKET,GCS_PREFIX=landing_zone/streaming/orders,MAX_MESSAGES=500,MAX_LOOPS=20,PULL_TIMEOUT=10"
 ```
@@ -105,7 +105,7 @@ The following job **reads files from the Landing Zone** and writes to an **Icebe
 
 ```bash 
 gcloud dataproc batches submit pyspark \
-  "chapter_05/consumers/spark/jobs/streaming/01_lz_orders_to_bronze_layer.py" \
+  "chapter_05/ingestion/spark/jobs/streaming/01_lz_orders_to_bronze_layer.py" \
   --project="$PROJECT_ID" \
   --region="$REGION" \
   --deps-bucket="gs://$BUCKET" \
@@ -178,7 +178,7 @@ export API_BASE_URL="https://ch05-producers-api-xxxxx.europe-west1.run.app/"
 gcloud run jobs deploy ch05-batch-ingestion-customers \
   --project="$PROJECT_ID" \
   --region="$REGION" \
-  --source="chapter_05/consumers/batch_ingestion" \
+  --source="chapter_05/ingestion/batch_ingestion" \
   --service-account="ch05-batch-ingestion-sa@$PROJECT_ID.iam.gserviceaccount.com" \
   --command="python" \
   --args="main.py" \
@@ -187,7 +187,7 @@ gcloud run jobs deploy ch05-batch-ingestion-customers \
 gcloud run jobs deploy ch05-batch-ingestion-products \
   --project="$PROJECT_ID" \
   --region="$REGION" \
-  --source="chapter_05/consumers/batch_ingestion" \
+  --source="chapter_05/ingestion/batch_ingestion" \
   --service-account="ch05-batch-ingestion-sa@$PROJECT_ID.iam.gserviceaccount.com" \
   --command="python" \
   --args="main.py" \
@@ -196,7 +196,7 @@ gcloud run jobs deploy ch05-batch-ingestion-products \
 gcloud run jobs deploy ch05-batch-ingestion-orders \
   --project="$PROJECT_ID" \
   --region="$REGION" \
-  --source="chapter_05/consumers/batch_ingestion" \
+  --source="chapter_05/ingestion/batch_ingestion" \
   --service-account="ch05-batch-ingestion-sa@$PROJECT_ID.iam.gserviceaccount.com" \
   --command="python" \
   --args="main.py" \
@@ -227,7 +227,7 @@ Run once per entity, as well:
 ```bash
 :: customers execution
 gcloud dataproc batches submit pyspark \
-  "chapter_05/consumers/spark/jobs/batch/01_lz_batch_to_bronze_layer.py" \
+  "chapter_05/ingestion/spark/jobs/batch/01_lz_batch_to_bronze_layer.py" \
   --project="$PROJECT_ID" \
   --region="$REGION" \
   --deps-bucket="gs://$BUCKET" \
@@ -253,7 +253,7 @@ spark.sql.catalog.local.warehouse=gs://$BUCKET/iceberg/warehouse" \
 
 :: products execution
 gcloud dataproc batches submit pyspark \
-  "chapter_05/consumers/spark/jobs/batch/01_lz_batch_to_bronze_layer.py" \
+  "chapter_05/ingestion/spark/jobs/batch/01_lz_batch_to_bronze_layer.py" \
   --project="$PROJECT_ID" \
   --region="$REGION" \
   --deps-bucket="gs://$BUCKET" \
@@ -279,7 +279,7 @@ spark.sql.catalog.local.warehouse=gs://$BUCKET/iceberg/warehouse" \
 
 :: orders execution
 gcloud dataproc batches submit pyspark \
-  "chapter_05/consumers/spark/jobs/batch/01_lz_batch_to_bronze_layer.py" \
+  "chapter_05/ingestion/spark/jobs/batch/01_lz_batch_to_bronze_layer.py" \
   --project="$PROJECT_ID" \
   --region="$REGION" \
   --deps-bucket="gs://$BUCKET" \
@@ -315,7 +315,7 @@ BQ_DATASET="bronze"
 
 gcloud run jobs deploy ch05-refresh-bq-iceberg-tables \
   --region="$REGION" \
-  --source="chapter_05/consumers/helper/refresh_bq_iceberg_tables" \
+  --source="chapter_05/ingestion/helper/refresh_bq_iceberg_tables" \
   --service-account="ch05-batch-ingestion-sa@$PROJECT_ID.iam.gserviceaccount.com" \
   --set-env-vars="PROJECT_ID=$PROJECT_ID,BUCKET=$BUCKET,BQ_DATASET=$BQ_DATASET,BQ_CONNECTION=$BQ_CONNECTION,WAREHOUSE_PREFIX=iceberg/warehouse,ICEBERG_DB=bronze"
 ```

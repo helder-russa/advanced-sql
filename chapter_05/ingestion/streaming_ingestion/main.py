@@ -29,7 +29,7 @@ def write_jsonl_to_gcs(storage_client: storage.Client, bucket_name: str, object_
     bucket = storage_client.bucket(bucket_name)
     blob = bucket.blob(object_path)
 
-    # JSON Lines (one JSON object per line)
+    # JSON records as newline-delimited JSON (one JSON object per line) and upload to GCS
     payload = "\n".join(json.dumps(r, separators=(",", ":"), ensure_ascii=False) for r in records) + "\n"
     blob.upload_from_string(payload, content_type="application/x-ndjson")
 

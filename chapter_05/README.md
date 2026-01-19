@@ -18,7 +18,7 @@ High-level layout:
 - `producers/`  
   Source systems (APIs) that generate `customers`, `products`, and `orders`, plus a streaming order event producer to Pub/Sub.
 
-- `consumers/`  
+- `ingestion/`  
   Ingestion + Spark jobs:
   - Cloud Run Jobs that write data into the **Landing Zone**
   - Dataproc Serverless Spark jobs that write to **Iceberg (Bronze)**
@@ -55,7 +55,7 @@ Notes:
 
 This README assumes you already followed the setup instructions in:
 - `chapter_05/producers/README.md`
-- `chapter_05/consumers/README.md`
+- `chapter_05/ingestion/README.md`
 - `chapter_05/transformations/README.md`
 
 If anything fails, start by re-checking those READMEs first.
@@ -95,7 +95,7 @@ and writes Iceberg tables in Bronze.
 
 ```bash
 gcloud dataproc batches submit pyspark \
-  "chapter_05/consumers/spark/jobs/streaming/01_lz_orders_to_bronze_layer.py" \
+  "chapter_05/ingestion/spark/jobs/streaming/01_lz_orders_to_bronze_layer.py" \
   --project="$PROJECT_ID" \
   --region="$REGION" \
   --deps-bucket="gs://$BUCKET" \
@@ -155,7 +155,7 @@ Run once per entity (customers, products, orders).
 ```bash
 :: customers execution
 gcloud dataproc batches submit pyspark \
-  "chapter_05/consumers/spark/jobs/batch/01_lz_batch_to_bronze_layer.py" \
+  "chapter_05/ingestion/spark/jobs/batch/01_lz_batch_to_bronze_layer.py" \
   --project="$PROJECT_ID" \
   --region="$REGION" \
   --deps-bucket="gs://$BUCKET" \
@@ -181,7 +181,7 @@ spark.sql.catalog.local.warehouse=gs://$BUCKET/iceberg/warehouse" \
 
 :: products execution
 gcloud dataproc batches submit pyspark \
-  "chapter_05/consumers/spark/jobs/batch/01_lz_batch_to_bronze_layer.py" \
+  "chapter_05/ingestion/spark/jobs/batch/01_lz_batch_to_bronze_layer.py" \
   --project="$PROJECT_ID" \
   --region="$REGION" \
   --deps-bucket="gs://$BUCKET" \
@@ -207,7 +207,7 @@ spark.sql.catalog.local.warehouse=gs://$BUCKET/iceberg/warehouse" \
 
 :: orders execution
 gcloud dataproc batches submit pyspark \
-  "chapter_05/consumers/spark/jobs/batch/01_lz_batch_to_bronze_layer.py" \
+  "chapter_05/ingestion/spark/jobs/batch/01_lz_batch_to_bronze_layer.py" \
   --project="$PROJECT_ID" \
   --region="$REGION" \
   --deps-bucket="gs://$BUCKET" \
