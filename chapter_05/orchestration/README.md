@@ -49,7 +49,7 @@ export BUCKET="advance-sql-de-bucket"
 export SERVICE_ACCOUNT="<YOUR_SERVICE_ACCOUNT_EMAIL_WITH_REQUIRED_PERMISSIONS>"
 ```
 
-## 2 Deploy workflows
+## 2. Deploy workflows
 Each workflow is scoped to a specific ingestion task for improved control. The `ch05-wf-full-batch-orchestration` workflow executes all batch steps sequentially, including the 	`ch05-refresh-bq-iceberg-tables` and `ch05-dbt-job cloud` run jobs.
 
 ```bash
@@ -79,7 +79,15 @@ gcloud workflows deploy ch05-wf-ingest-live_orders \
   --set-env-vars=PROJECT_ID=$PROJECT_ID,BUCKET=$BUCKET,REGION=$REGION,SERVICE_ACCOUNT=$SERVICE_ACCOUNT      
 ```
 
-## 3 Run workflows
+## 3. Copy dataproc files to Google Cloud Storage (GCS)
+Cloud Workflows cannot access your local environment directly. Therefore, any files needed by Dataproc jobs must be uploaded to a GCS bucket in advance. Make sure to replicate the local structure inside your GCS bucket. At minimum, the following files should be copied:
+
+```bash
+gsutil cp chapter_05/ingestion/spark/jobs/batch/01_lz_batch_to_bronze_layer.py gs://$BUCKET/chapter_05/ingestion/spark/jobs/batch/
+gsutil cp chapter_05/ingestion/spark/jobs/streaming/01_lz_orders_to_bronze_layer.py gs://$BUCKET/chapter_05/ingestion/spark/jobs/streaming/
+```
+
+## 4. Run workflows
 This can be done directly via the https://console.cloud.google.com/workflows?project=<PROJECT_ID> console or programmatically using the following command:
 
 ```bash
