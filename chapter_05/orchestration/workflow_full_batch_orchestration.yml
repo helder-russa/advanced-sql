@@ -104,7 +104,7 @@ main:
         - run_dbt_transformations:
             call: googleapis.run.v1.namespaces.jobs.run
             args:
-                name: ${"namespaces/" + project_id + "/jobs/ch05-dbt-transformations"}
+                name: ${"namespaces/" + project_id + "/jobs/ch05-dbt-job"}
                 location: ${job_location}
             result: job_execution       
       

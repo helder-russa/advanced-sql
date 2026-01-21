@@ -6,8 +6,8 @@ main:
                 - project_id: ${sys.get_env("PROJECT_ID")}
                 - bucket: ${sys.get_env("BUCKET")}
                 - job_location: ${sys.get_env("REGION")}                
-                - job_name: ch05-batch-ingestion-orders
-                - batch_id: ${"workflow-ingest-live-orders-" + sys.get_env("GOOGLE_CLOUD_WORKFLOW_EXECUTION_ID")}
+                - job_name: ch05-streaming-ingestion-job
+                - batch_id: ${"workflow-ingest-live-ord-" + sys.get_env("GOOGLE_CLOUD_WORKFLOW_EXECUTION_ID")}
                 - service_account: ${sys.get_env("SERVICE_ACCOUNT")}                   
 
         - streaming_ingestion_orders:
