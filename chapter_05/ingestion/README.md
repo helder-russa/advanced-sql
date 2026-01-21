@@ -222,7 +222,7 @@ Data should land in your google cloud storage defined bucket:
 Run once per entity, as well:
 
 ```bash
-:: customers execution
+# customers execution
 gcloud dataproc batches submit pyspark \
   "chapter_05/ingestion/spark/jobs/batch/01_lz_batch_to_bronze_layer.py" \
   --properties="spark.executor.instances=2,\
@@ -244,7 +244,7 @@ spark.sql.catalog.local.warehouse=gs://$BUCKET/iceberg/warehouse" \
   --RESET_TABLE="false" \
   --SPARK_LOG_LEVEL="WARN"
 
-:: products execution
+# products execution
 gcloud dataproc batches submit pyspark \
   "chapter_05/ingestion/spark/jobs/batch/01_lz_batch_to_bronze_layer.py" \
   --properties="spark.executor.instances=2,\
@@ -266,7 +266,7 @@ spark.sql.catalog.local.warehouse=gs://$BUCKET/iceberg/warehouse" \
   --RESET_TABLE="false" \
   --SPARK_LOG_LEVEL="WARN"
 
-:: orders execution
+# orders execution
 gcloud dataproc batches submit pyspark \
   "chapter_05/ingestion/spark/jobs/batch/01_lz_batch_to_bronze_layer.py" \
   --properties="spark.executor.instances=2,\

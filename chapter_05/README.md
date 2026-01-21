@@ -97,10 +97,7 @@ and writes Iceberg tables in Bronze.
 ```bash
 gcloud dataproc batches submit pyspark \
   "chapter_05/ingestion/spark/jobs/streaming/01_lz_orders_to_bronze_layer.py" \
-  --project="$PROJECT_ID" \
-  --region="$REGION" \
-  --deps-bucket="gs://$BUCKET" \
-  --ttl="10m" \
+  --ttl="10m" \  
   --properties="spark.executor.instances=2,\
 spark.driver.cores=4,\
 spark.executor.cores=4,\
@@ -154,13 +151,9 @@ Run once per entity (customers, products, orders).
 
 
 ```bash
-:: customers execution
+# customers execution
 gcloud dataproc batches submit pyspark \
   "chapter_05/ingestion/spark/jobs/batch/01_lz_batch_to_bronze_layer.py" \
-  --project="$PROJECT_ID" \
-  --region="$REGION" \
-  --deps-bucket="gs://$BUCKET" \
-  --ttl="10m" \
   --properties="spark.executor.instances=2,\
 spark.driver.cores=4,\
 spark.executor.cores=4,\
@@ -180,13 +173,9 @@ spark.sql.catalog.local.warehouse=gs://$BUCKET/iceberg/warehouse" \
   --RESET_TABLE="false" \
   --SPARK_LOG_LEVEL="WARN"
 
-:: products execution
+# products execution
 gcloud dataproc batches submit pyspark \
   "chapter_05/ingestion/spark/jobs/batch/01_lz_batch_to_bronze_layer.py" \
-  --project="$PROJECT_ID" \
-  --region="$REGION" \
-  --deps-bucket="gs://$BUCKET" \
-  --ttl="10m" \
   --properties="spark.executor.instances=2,\
 spark.driver.cores=4,\
 spark.executor.cores=4,\
@@ -206,13 +195,9 @@ spark.sql.catalog.local.warehouse=gs://$BUCKET/iceberg/warehouse" \
   --RESET_TABLE="false" \
   --SPARK_LOG_LEVEL="WARN"
 
-:: orders execution
+# orders execution
 gcloud dataproc batches submit pyspark \
   "chapter_05/ingestion/spark/jobs/batch/01_lz_batch_to_bronze_layer.py" \
-  --project="$PROJECT_ID" \
-  --region="$REGION" \
-  --deps-bucket="gs://$BUCKET" \
-  --ttl="10m" \
   --properties="spark.executor.instances=2,\
 spark.driver.cores=4,\
 spark.executor.cores=4,\
