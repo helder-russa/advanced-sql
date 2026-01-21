@@ -1,6 +1,6 @@
 # Chapter 05 - Ingestion – Setup Guide
 
-This folder contains the **consumer side** of the Chapter 5 pipeline.  
+This folder contains the **ingestion side** of the Chapter 5 pipeline.  
 It ingests data from **streaming (Pub/Sub)** and **batch APIs**, lands it in **GCS (Landing Zone)**, and materializes **Iceberg tables (Bronze layer)** using Spark.
 
 > ⚠️ **Important**
@@ -106,10 +106,7 @@ The following job **reads files from the Landing Zone** and writes to an **Icebe
 ```bash 
 gcloud dataproc batches submit pyspark \
   "chapter_05/ingestion/spark/jobs/streaming/01_lz_orders_to_bronze_layer.py" \
-  --project="$PROJECT_ID" \
-  --region="$REGION" \
-  --deps-bucket="gs://$BUCKET" \
-  --ttl="10m" \
+  --ttl="10m" \  
   --properties="spark.executor.instances=2,\
 spark.driver.cores=4,\
 spark.executor.cores=4,\
@@ -228,10 +225,6 @@ Run once per entity, as well:
 :: customers execution
 gcloud dataproc batches submit pyspark \
   "chapter_05/ingestion/spark/jobs/batch/01_lz_batch_to_bronze_layer.py" \
-  --project="$PROJECT_ID" \
-  --region="$REGION" \
-  --deps-bucket="gs://$BUCKET" \
-  --ttl="10m" \
   --properties="spark.executor.instances=2,\
 spark.driver.cores=4,\
 spark.executor.cores=4,\
@@ -254,10 +247,6 @@ spark.sql.catalog.local.warehouse=gs://$BUCKET/iceberg/warehouse" \
 :: products execution
 gcloud dataproc batches submit pyspark \
   "chapter_05/ingestion/spark/jobs/batch/01_lz_batch_to_bronze_layer.py" \
-  --project="$PROJECT_ID" \
-  --region="$REGION" \
-  --deps-bucket="gs://$BUCKET" \
-  --ttl="10m" \
   --properties="spark.executor.instances=2,\
 spark.driver.cores=4,\
 spark.executor.cores=4,\
@@ -280,10 +269,6 @@ spark.sql.catalog.local.warehouse=gs://$BUCKET/iceberg/warehouse" \
 :: orders execution
 gcloud dataproc batches submit pyspark \
   "chapter_05/ingestion/spark/jobs/batch/01_lz_batch_to_bronze_layer.py" \
-  --project="$PROJECT_ID" \
-  --region="$REGION" \
-  --deps-bucket="gs://$BUCKET" \
-  --ttl="10m" \
   --properties="spark.executor.instances=2,\
 spark.driver.cores=4,\
 spark.executor.cores=4,\

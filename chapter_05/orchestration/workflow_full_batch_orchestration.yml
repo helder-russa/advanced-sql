@@ -1,0 +1,113 @@
+main:
+    params: [event]
+    steps:
+        - init:
+            assign:
+                - project_id: ${sys.get_env("PROJECT_ID")}
+                - bucket: ${sys.get_env("BUCKET")}
+                - job_location: ${sys.get_env("REGION")}                
+      
+        - call-ch05-wf-ingest-customers:
+            call: http.post
+            args:
+                url: ${"https://workflowexecutions.googleapis.com/v1/projects/" + project_id + "/locations/" + job_location + "/workflows/ch05-wf-ingest-customers/executions"}
+                auth:
+                    type: OAuth2
+                    scope: 'https://www.googleapis.com/auth/cloud-platform'
+            result: workflow
+
+        - wait-for-ingest-customers-workflow-completion:
+            call: sys.sleep
+            args:
+                seconds: 10
+
+        - check-customers-workflow-status:
+            call: http.get
+            args:
+                url: ${"https://workflowexecutions.googleapis.com/v1/" + workflow.body.name}
+                auth:
+                    type: OAuth2
+                    scope: 'https://www.googleapis.com/auth/cloud-platform'
+            result: customers_status
+
+        - decision-customers-workflow-done:
+            switch:
+            - condition: ${customers_status.body.state == "ACTIVE"}
+              next: wait-for-ingest-customers-workflow-completion
+            next: call-ch05-wf-ingest-products
+        
+        - call-ch05-wf-ingest-products:
+            call: http.post
+            args:
+                url: ${"https://workflowexecutions.googleapis.com/v1/projects/" + project_id + "/locations/" + job_location + "/workflows/ch05-wf-ingest-products/executions"}
+                auth:
+                    type: OAuth2
+                    scope: 'https://www.googleapis.com/auth/cloud-platform'
+            result: workflow
+
+        - wait-for-ingest-products-workflow-completion:
+            call: sys.sleep
+            args:
+                seconds: 10
+
+        - check-products-workflow-status:
+            call: http.get
+            args:
+                url: ${"https://workflowexecutions.googleapis.com/v1/" + workflow.body.name}
+                auth:
+                    type: OAuth2
+                    scope: 'https://www.googleapis.com/auth/cloud-platform'
+            result: products_status
+
+        - decision-products-workflow-done:
+            switch:
+            - condition: ${products_status.body.state == "ACTIVE"}
+              next: wait-for-ingest-products-workflow-completion
+            next: call-ch05-wf-ingest-orders
+
+        - call-ch05-wf-ingest-orders:
+            call: http.post
+            args:
+                url: ${"https://workflowexecutions.googleapis.com/v1/projects/" + project_id + "/locations/" + job_location + "/workflows/ch05-wf-ingest-orders/executions"}
+                auth:
+                    type: OAuth2
+                    scope: 'https://www.googleapis.com/auth/cloud-platform'
+            result: workflow
+
+        - wait-for-ingest-orders-workflow-completion:
+            call: sys.sleep
+            args:
+                seconds: 10
+
+        - check-orders-workflow-status:
+            call: http.get
+            args:
+                url: ${"https://workflowexecutions.googleapis.com/v1/" + workflow.body.name}
+                auth:
+                    type: OAuth2
+                    scope: 'https://www.googleapis.com/auth/cloud-platform'
+            result: orders_status
+
+        - decision-orders-workflow-done:
+            switch:
+            - condition: ${orders_status.body.state == "ACTIVE"}
+              next: wait-for-ingest-orders-workflow-completion
+            next: refresh_bq_external_tables
+
+        - refresh_bq_external_tables:
+            call: googleapis.run.v1.namespaces.jobs.run
+            args:
+                name: ${"namespaces/" + project_id + "/jobs/ch05-refresh-bq-iceberg-tables"}
+                location: ${job_location}
+            result: job_execution   
+        
+        - run_dbt_transformations:
+            call: googleapis.run.v1.namespaces.jobs.run
+            args:
+                name: ${"namespaces/" + project_id + "/jobs/ch05-dbt-transformations"}
+                location: ${job_location}
+            result: job_execution       
+      
+        - finish:
+            return: ${job_execution}   
+        

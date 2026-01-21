@@ -237,6 +237,8 @@ def parse_args():
     p.add_argument("--TRIGGER_SECONDS", default=os.getenv("TRIGGER_SECONDS", "15"))
     p.add_argument("--SPARK_LOG_LEVEL", default=os.getenv("SPARK_LOG_LEVEL", "WARN"))
 
+    p.add_argument("--ttl", default=os.getenv("ttl", None))
+
     # IMPORTANT: tolerate unknown args so Dataproc tooling won't break this script
     args, _ = p.parse_known_args()
     return args
@@ -278,8 +280,30 @@ def main():
         .start()
     )
 
-    query.awaitTermination()
+    #TTL Logic: Wait for a specific amount of time or indefinitely
+    if args.ttl:
+        # Simple helper to handle '10m' or raw seconds
+        ttl_str = str(args.ttl).lower()
+        if ttl_str.endswith('m'):
+            timeout_seconds = int(ttl_str.replace('m', '')) * 60
+        elif ttl_str.endswith('h'):
+            timeout_seconds = int(ttl_str.replace('h', '')) * 3600
+        else:
+            timeout_seconds = int(ttl_str)
+        
+        print(f"Job started with TTL: {args.ttl} ({timeout_seconds} seconds).")
+        
+        # awaitTermination returns True if terminated by stop(), False if timeout reached
+        finished_cleanly = query.awaitTermination(timeout_seconds)
+        
+        if not finished_cleanly:
+            print(f"TTL reached ({args.ttl}). Terminating Spark streaming job...")
+            query.stop()
+    else:
+        print("No TTL specified. Running indefinitely (CTRL+C to stop).")
+        query.awaitTermination()
 
 
 if __name__ == "__main__":
     main()
+

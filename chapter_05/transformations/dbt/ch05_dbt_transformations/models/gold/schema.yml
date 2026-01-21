@@ -23,7 +23,7 @@ models:
   - name: dim_customers
     description: >
       Customers dimension table containing customer details.
-    columnss:
+    columns:
       - name: customer_id
         description: Primary customer identifier.
       - name: customer_name

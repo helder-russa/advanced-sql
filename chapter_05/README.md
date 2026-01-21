@@ -57,6 +57,7 @@ This README assumes you already followed the setup instructions in:
 - `chapter_05/producers/README.md`
 - `chapter_05/ingestion/README.md`
 - `chapter_05/transformations/README.md`
+- `chapter_05/orchestration/README.md`
 
 If anything fails, start by re-checking those READMEs first.
 
@@ -284,3 +285,20 @@ At the end of this chapter, you should have:
 ### dbt layers (BigQuery managed tables)
 - `silver.*`
 - `gold.*`
+
+
+### 7. Setup the orchestration
+For full automation, rather than triggering each Cloud Run job or Dataproc batch manually, you can execute the Cloud Workflows you’ve defined. This can be done directly via the https://console.cloud.google.com/workflows?project=<PROJECT_ID> console or programmatically using the following command:
+
+```bash
+# Full batch pipeline (sequential - streaming not included)
+gcloud workflows run ch05-wf-full-batch-orchestration --location=$REGION
+
+# Individual batch workflows (on demand)
+gcloud workflows run ch05-wf-ingest-customers --location=$REGION
+gcloud workflows run ch05-wf-ingest-products --location=$REGION
+gcloud workflows run ch05-wf-ingest-orders --location=$REGION
+
+# Individual streaming workflows (on demand)
+gcloud workflows run ch05-wf-ingest-live_orders --location=$REGION
+```

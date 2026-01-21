@@ -88,7 +88,7 @@ def main():
     # Warehouse prefix inside bucket (keep configurable, but simple)
     warehouse_prefix = os.getenv("WAREHOUSE_PREFIX", "iceberg/warehouse").strip("/")
 
-    # Iceberg namespace for these tables (you said bronze)
+    # Iceberg namespace for these tables
     iceberg_db = os.getenv("ICEBERG_DB", "bronze").strip()
 
     bq = bigquery.Client(project=project_id)

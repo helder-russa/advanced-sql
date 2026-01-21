@@ -1,0 +1,91 @@
+main:
+    params: [event]
+    steps:
+        - init:
+            assign:
+                - project_id: ${sys.get_env("PROJECT_ID")}
+                - bucket: ${sys.get_env("BUCKET")}
+                - job_location: ${sys.get_env("REGION")}                
+                - job_name: ch05-batch-ingestion-customers
+                - batch_id: ${"workflow-ingest-customers-" + sys.get_env("GOOGLE_CLOUD_WORKFLOW_EXECUTION_ID")}
+                - service_account: ${sys.get_env("SERVICE_ACCOUNT")}
+                - retries: 0
+                - max_retries: 20          
+
+        - batch_ingestion_customers:
+            call: googleapis.run.v1.namespaces.jobs.run
+            args:
+                name: ${"namespaces/" + project_id + "/jobs/" + job_name}
+                location: ${job_location}
+            result: run_execution
+            
+        - spark_batch_customers_to_bronze:
+            call: http.post
+            # Spark Batch API doc --> https://cloud.google.com/dataproc-serverless/docs/reference/rest/v1/projects.locations.batches/create
+            args:
+                url: ${"https://dataproc.googleapis.com/v1/projects/" + project_id +"/locations/"+ job_location + "/batches"}
+                auth:
+                    type: OAuth2
+                    scopes: "https://www.googleapis.com/auth/cloud-platform"
+                headers:
+                    Content-Type: "application/json"
+                query:
+                    batchId: ${batch_id}
+                body:
+                    environmentConfig:
+                        executionConfig:
+                            serviceAccount: ${service_account}
+                    pysparkBatch:
+                        mainPythonFileUri: ${"gs://" + bucket + "/chapter_05/ingestion/spark/jobs/batch/01_lz_batch_to_bronze_layer.py"}
+                        args:
+                        - "--ENTITY=customers"
+                        - ${"--INPUT_PATH=gs://" + bucket + "/landing_zone/batch/customers/"}
+                        - "--CATALOG_NAME=local"
+                        - "--DB_NAME=bronze"
+                        - "--TABLE_NAME=customers"
+                        - "--RESET_TABLE=false"
+                        - "--SPARK_LOG_LEVEL=WARN"
+                    runtimeConfig:
+                        version: "2.1"
+                        properties:                         
+                            spark.executor.instances: "2"
+                            spark.driver.cores: "4"
+                            spark.executor.cores: "4"
+                            spark.dataproc.driver.disk.size: "250g"
+                            spark.dataproc.executor.disk.size: "250g"
+                            spark.jars.packages: "org.apache.iceberg:iceberg-spark-runtime-3.5_2.13:1.10.1"
+                            spark.sql.extensions: "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions"
+                            spark.sql.catalog.local: "org.apache.iceberg.spark.SparkCatalog"
+                            spark.sql.catalog.local.type: "hadoop"
+                            spark.sql.catalog.local.warehouse: ${"gs://" + bucket + "/iceberg/warehouse"}
+            result: dataproc_execution                  
+        
+        - check_job:
+            call: http.get
+            args:
+                url: ${"https://dataproc.googleapis.com/v1/projects/"+ project_id +"/locations/"+ job_location +"/batches/" + batch_id}
+                auth:
+                    type: OAuth2
+            result: jobStatus
+
+        - check_job_done:
+                switch:
+                    - condition: ${jobStatus.body.state == "SUCCEEDED"}
+                      next: finish
+                    - condition: ${jobStatus.body.state == "FAILED" OR jobStatus.body.state == "CANCELLED" OR jobStatus.body.state == "UNSPECIFIED" OR retries >= max_retries}
+                      raise: ${"Dataproc batch " + jobStatus.body.state + " with " + retries + " retries"}
+                    - condition: ${true}
+                      assign:
+                        - retries: ${retries + 1}
+                      next: wait
+
+        - wait:
+            call: sys.sleep
+            args:
+                seconds: 30
+            next: check_job        
+        
+        - finish:
+            return: 
+                cloud_run_job_name: ${run_execution}
+                dataproc_batch_id: ${dataproc_execution}

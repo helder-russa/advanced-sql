@@ -308,7 +308,7 @@ def main():
     # Read
     raw = read_landing_zone(spark, entity, input_path)
 
-    # Optional filter by snapshot_dt (useful in demos)
+    # Optional filter by snapshot_dt
     if snapshot_date_filter:
         raw = raw.filter(col("snapshot_dt") == lit(snapshot_date_filter))
 
