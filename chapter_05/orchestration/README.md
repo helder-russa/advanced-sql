@@ -103,3 +103,25 @@ gcloud workflows run ch05-wf-ingest-orders --location=$REGION
 # Individual streaming workflows (on demand)
 gcloud workflows run ch05-wf-ingest-live_orders --location=$REGION
 ```
+
+## 4. Schedule job (sample)
+This can be done directly via the https://console.cloud.google.com/workflows?project=<PROJECT_ID> console or programmatically using the following command:
+
+```bash
+gcloud scheduler jobs create http run-daily-workflow \
+  --schedule="0 20 * * *" \
+  --uri="https://workflowexecutions.googleapis.com/v1/projects/$PROJECT_ID/locations/$REGION/workflows/ch05-wf-full-batch-orchestration/executions" \
+  --http-method=POST \
+  --oauth-service-account-email=$SERVICE_ACCOUNT \
+  --message-body="{}" \
+  --location=$REGION
+
+gcloud scheduler jobs create http run-daily-workflow-test \
+  --schedule="20 10 * * *" \
+  --uri="https://workflowexecutions.googleapis.com/v1/projects/$PROJECT_ID/locations/$REGION/workflows/ch05-wf-full-batch-orchestration/executions" \
+  --http-method=POST \
+  --oauth-service-account-email=$SERVICE_ACCOUNT \
+  --message-body="{}" \
+  --location=$REGION
+```
+

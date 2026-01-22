@@ -38,3 +38,6 @@ models:
     gold:
       +schema: gold
       +materialized: table
+    consume:
+      +schema: consume
+      +materialized: table

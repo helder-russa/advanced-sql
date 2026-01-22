@@ -139,8 +139,12 @@ def normalize_products(df: DataFrame) -> DataFrame:
 
 
 def normalize_orders(df: DataFrame) -> DataFrame:
-    # created_at is like "2026-01-06 11:26:26.043133"
-    created_at_ts = to_timestamp(col("created_at"), "yyyy-MM-dd HH:mm:ss.SSSSSS")
+     
+    created_at_ts = coalesce(
+        to_timestamp(col("created_at"), "yyyy-MM-dd'T'HH:mm:ss.SSSSSS"),
+        to_timestamp(col("created_at"), "yyyy-MM-dd HH:mm:ss.SSSSSS"),
+        to_timestamp(col("created_at"))  # last resort (Spark default parsing)
+    )
 
     # derive unit_price = total_amount / quantity when possible
     unit_price = when(

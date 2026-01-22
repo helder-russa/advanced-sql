@@ -1,0 +1,49 @@
+semantic_models:             
+  - name: orders_semantic
+    model: ref('fct_orders')                     # using the fct_orders gold table as the base
+    description: "Semantic model for orders (one row per order)."
+    entities:
+      - name: order_id
+        type: primary                            # each order_id is the primary entity for this model
+      - name: customer_id
+        type: foreign                            # foreign key referencing a Customer entity/model
+      - name: product_id
+        type: foreign                            # foreign key referencing a Product entity/model
+    dimensions:
+      - name: created_at
+        type: time
+        type_params:
+          time_granularity: day              # raw timestamp as time dimension (if needed)
+      # (Additional dimensions like product_category or customer_country could be inferred via foreign entities if those models are defined)
+    measures:
+      - name: order_count
+        description: "Number of orders"
+        agg: count_distinct
+        expr: order_id
+        agg_time_dimension: created_at
+      - name: total_amount_sum
+        description: "Total order amount (gross)"
+        agg: sum
+        expr: total_amount
+        agg_time_dimension: created_at
+
+metrics:
+  - name: total_revenue
+    description: "Total revenue of orders (sum of order amounts)"
+    type: simple
+    label: total_revenue
+    type_params:
+      measure: total_amount_sum                 # uses the sum of total_amount measure
+  - name: total_orders
+    description: "Total number of orders placed"
+    type: simple
+    label: total_orders
+    type_params:
+      measure: order_count                     # uses the order_count measure
+  - name: avg_order_value
+    description: "Average order value (revenue per order)"
+    type: ratio
+    label: avg_order_value
+    type_params:
+      numerator: total_revenue
+      denominator: total_orders

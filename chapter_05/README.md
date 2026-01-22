@@ -29,6 +29,9 @@ High-level layout:
   - Gold models (analytics-ready and semantic layer)
   - tests + documentation
 
+  - `orchestration/`  
+  config files.. TBD
+
 ---
 
 ## Data journey (mental model)
