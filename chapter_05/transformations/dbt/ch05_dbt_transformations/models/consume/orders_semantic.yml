@@ -14,7 +14,6 @@ semantic_models:
         type: time
         type_params:
           time_granularity: day              # raw timestamp as time dimension (if needed)
-      # (Additional dimensions like product_category or customer_country could be inferred via foreign entities if those models are defined)
     measures:
       - name: order_count
         description: "Number of orders"

@@ -7,3 +7,11 @@ models:
     columns:
       - name: date_day
         granularity: day
+
+  - name: daily_order_metrics
+    config:
+      materialized: view
+
+  - name: live_orders_latest
+    config:
+      materialized: view

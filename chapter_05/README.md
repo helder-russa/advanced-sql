@@ -30,7 +30,7 @@ High-level layout:
   - tests + documentation
 
   - `orchestration/`  
-  config files.. TBD
+  Config files that enable the Cloud Workflow deployment
 
 ---
 
@@ -44,7 +44,7 @@ Bronze (Iceberg on GCS) — structured tables
 ↓
 BigQuery External Tables (read Iceberg metadata)
 ↓
-Silver / Gold (dbt in BigQuery) — SQL transformations + semantic layer
+Silver / Gold / Consume (dbt in BigQuery) — SQL transformations + semantic layer
 ```
 
 Notes:
