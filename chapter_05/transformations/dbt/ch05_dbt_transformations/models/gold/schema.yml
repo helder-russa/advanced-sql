@@ -57,3 +57,9 @@ models:
   - name: mart_sales
     description: >
       Sales mart aggregating revenue and total sales by order date.
+
+  - name: live_orders_stabilized
+    description: >
+      Live orders view with stabilized schema for real-time analytics.
+    config:
+      materialized: view      
